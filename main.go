@@ -8,7 +8,6 @@ import (
 	"regexp"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"mvdan.cc/xurls/v2"
@@ -97,15 +96,13 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if len(urls) > 0 {
 		s.ChannelMessageSend(m.ChannelID, strings.Join(urls, "\n"))
 
-		if len(m.Embeds) > 0 {
-			time.Sleep(4 * time.Second)
-			_, err := s.ChannelMessageEditComplex(&discordgo.MessageEdit{
-				Channel: m.ChannelID,
-				ID:      m.ID,
-				Flags:   m.Flags | discordgo.MessageFlagsSuppressEmbeds})
-			if err != nil {
-				fmt.Println(err.Error())
-			}
+		//time.Sleep(4 * time.Second)
+		_, err := s.ChannelMessageEditComplex(&discordgo.MessageEdit{
+			Channel: m.ChannelID,
+			ID:      m.ID,
+			Flags:   m.Flags | discordgo.MessageFlagsSuppressEmbeds})
+		if err != nil {
+			fmt.Println(err.Error())
 		}
 	}
 }
