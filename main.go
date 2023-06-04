@@ -17,7 +17,7 @@ import (
 var (
 	Token          string
 	BotPermissions string = "274878262336"
-	Matchers       []Matcher
+	Matchers       []*Matcher
 )
 
 type Matcher struct {
@@ -33,7 +33,7 @@ func init() {
 	flag.Parse()
 
 	// TODO: Consider moving to config file?
-	Matchers = []Matcher{
+	Matchers = []*Matcher{
 		{
 			Name:        "TikTok",
 			Pattern:     `^https?://(?:www\.)?tiktok.com/(.*)`,
@@ -47,7 +47,7 @@ func init() {
 		{
 			Name:        "Pixiv",
 			Pattern:     `^https?://(?:www\.)?pixiv.net/(.*)`,
-			Replacement: "https://phixiv.net/$1",
+			Replacement: "https://www.phixiv.net/$1",
 		},
 	}
 	for _, m := range Matchers {
