@@ -37,4 +37,4 @@ COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /dist/main /
 
 # Command to run
-CMD ["/main"]
+ENTRYPOINT ["/main"]
