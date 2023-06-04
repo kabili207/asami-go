@@ -17,12 +17,42 @@ import (
 var (
 	Token          string
 	BotPermissions string = "274878262336"
+	Matchers       []Matcher
 )
+
+type Matcher struct {
+	Name        string
+	Pattern     string
+	Replacement string
+	Regex       *regexp.Regexp
+}
 
 func init() {
 
 	flag.StringVar(&Token, "t", "", "Bot Token")
 	flag.Parse()
+
+	// TODO: Consider moving to config file?
+	Matchers = []Matcher{
+		{
+			Name:        "TikTok",
+			Pattern:     `^https?://(?:www\.)?tiktok.com/(.*)`,
+			Replacement: "https://vxtiktok.com/$1",
+		},
+		{
+			Name:        "Instagram",
+			Pattern:     `^https?://(?:www\.)?instagram.com/(.*)`,
+			Replacement: "https://ddinstagram.com/$1",
+		},
+		{
+			Name:        "Pixiv",
+			Pattern:     `^https?://(?:www\.)?pixiv.net/(.*)`,
+			Replacement: "https://phixiv.net/$1",
+		},
+	}
+	for _, m := range Matchers {
+		m.Regex = regexp.MustCompile(m.Pattern)
+	}
 
 }
 
@@ -41,7 +71,6 @@ func main() {
 	// In this example, we only care about receiving message events.
 	dg.Identify.Intents = discordgo.IntentsGuildMessages
 
-	// Open a websocket connection to Discord and begin listening.
 	err = dg.Open()
 	if err != nil {
 		fmt.Println("error opening connection,", err)
@@ -50,8 +79,7 @@ func main() {
 
 	// Wait here until CTRL-C or other term signal is received.
 	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
-
-	fmt.Printf("Invite link: https://discord.com/api/oauth2/authorize?client_id=768941376028016651&permissions=%v&scope=bot", BotPermissions)
+	fmt.Printf("Invite link: https://discord.com/api/oauth2/authorize?client_id=768941376028016651&permissions=%v&scope=bot\n", BotPermissions)
 
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
@@ -66,41 +94,36 @@ func main() {
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	// Ignore all messages created by the bot itself
-	// This isn't required in this specific example but it's a good practice.
 	if m.Author.ID == s.State.User.ID {
 		return
 	}
 
-	origString := m.Content
 	urls := make([]string, 0)
 
 	rx := xurls.Strict()
 
-	origUrls := rx.FindAllString(origString, -1)
-
-	rx_insta := regexp.MustCompile(`^https?://(?:www\.)?instagram.com/(.*)$`)
-	rx_tik := regexp.MustCompile(`^https?://(?:www\.)?tiktok.com/(.*)$`)
+	origUrls := rx.FindAllString(m.Content, -1)
 
 	for _, u := range origUrls {
-		if rx_insta.MatchString(u) {
-			urls = append(urls, rx_insta.ReplaceAllString(u, "https://ddinstagram.com/$1"))
-		}
-		if rx_tik.MatchString(u) {
-			urls = append(urls, rx_tik.ReplaceAllString(u, "https://vxtiktok.com/$1"))
+		for _, m := range Matchers {
+			if m.Regex.MatchString(u) {
+				urls = append(urls, m.Regex.ReplaceAllString(u, m.Replacement))
+			}
 		}
 	}
 
 	urls = dedupSlice(urls)
 
-	// If the message is "ping" reply with "Pong!"
 	if len(urls) > 0 {
 		s.ChannelMessageSend(m.ChannelID, strings.Join(urls, "\n"))
 
-		//time.Sleep(4 * time.Second)
+		// Supress the embed from the source message
 		_, err := s.ChannelMessageEditComplex(&discordgo.MessageEdit{
 			Channel: m.ChannelID,
 			ID:      m.ID,
-			Flags:   m.Flags | discordgo.MessageFlagsSuppressEmbeds})
+			Flags:   m.Flags | discordgo.MessageFlagsSuppressEmbeds,
+		})
+
 		if err != nil {
 			fmt.Println(err.Error())
 		}
@@ -111,9 +134,6 @@ func dedupSlice[T comparable](slice []T) []T {
 	keys := make(map[T]bool)
 	list := []T{}
 
-	// If the key(values of the slice) is not equal
-	// to the already present value in new slice (list)
-	// then we append it. else we jump on another element.
 	for _, entry := range slice {
 		if _, value := keys[entry]; !value {
 			keys[entry] = true
