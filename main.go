@@ -57,7 +57,7 @@ func init() {
 		{
 			Name:        "FurAffinity",
 			Pattern:     `^https?://(?:www\.)?furaffinity.net/(.*)`,
-			Replacement: "https://fxdeviantart.net/$1",
+			Replacement: "https://fxfuraffinity.net/$1",
 		},
 	}
 	for _, m := range Matchers {
