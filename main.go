@@ -49,6 +49,16 @@ func init() {
 			Pattern:     `^https?://(?:www\.)?pixiv.net/(.*)`,
 			Replacement: "https://www.phixiv.net/$1",
 		},
+		{
+			Name:        "DeviantArt",
+			Pattern:     `^https?://(?:www\.)?deviantart.com/(.*)`,
+			Replacement: "https://www.fxdeviantart.com/$1",
+		},
+		{
+			Name:        "FurAffinity",
+			Pattern:     `^https?://(?:www\.)?furaffinity.net/(.*)`,
+			Replacement: "https://fxdeviantart.net/$1",
+		},
 	}
 	for _, m := range Matchers {
 		m.Regex = regexp.MustCompile(m.Pattern)
