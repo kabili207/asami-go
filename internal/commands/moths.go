@@ -1,0 +1,95 @@
+package commands
+
+import (
+	"fmt"
+	"net/http"
+	"strings"
+
+	"github.com/bwmarrin/discordgo"
+
+	"github.com/kabili207/asamigo/internal/services/insects"
+	"github.com/zekrotja/ken"
+)
+
+var mimeMaps = map[string]string{
+	"image/jpeg": ".jpg",
+	"image/png":  ".png",
+	"image/webp": ".webp",
+	"image/gif":  ".gif",
+}
+
+type Moths struct {
+}
+
+var (
+	_ ken.SlashCommand = (*Moths)(nil)
+)
+
+func (c *Moths) Name() string {
+	return "moth"
+}
+
+func (c *Moths) Description() string {
+	return "Post a moth!"
+}
+
+func (c *Moths) Version() string {
+	return "1.0.0"
+}
+
+func (c *Moths) Type() discordgo.ApplicationCommandType {
+	return discordgo.ChatApplicationCommand
+}
+
+func (c *Moths) Options() []*discordgo.ApplicationCommandOption {
+	return []*discordgo.ApplicationCommandOption{
+		{
+
+			Type:        discordgo.ApplicationCommandOptionString,
+			Name:        "key",
+			Description: "The ID key for a specific moth species",
+			Required:    false,
+		},
+	}
+}
+
+func (c *Moths) Run(ctx ken.Context) (err error) {
+	if err = ctx.Defer(); err != nil {
+		return
+	}
+
+	var moth *insects.Insect
+	cmd, ok := ctx.Options().GetByNameOptional("key")
+	if ok {
+		key := cmd.StringValue()
+		moth = insects.GetInsect(insects.Moth, key)
+		if moth == nil {
+			return fmt.Errorf("unable to find moth %v", key)
+		}
+	} else {
+		moth = insects.GetRandomInsect(insects.Moth)
+	}
+
+	imageResp, err := http.Get(moth.Pictures[0].Url)
+	if err != nil {
+		return err
+	}
+
+	contentType := imageResp.Header["Content-Type"][0]
+	ext, ok := mimeMaps[contentType]
+	if !ok {
+		return fmt.Errorf("unknown mime-type %v", contentType)
+	}
+
+	return ctx.FollowUp(true, &discordgo.WebhookParams{
+		Content: "## " + moth.Name + " *(" + strings.ToLower(moth.ScientificName) + ")*\n\n" +
+			moth.Description,
+		Files: []*discordgo.File{
+			{
+				Name:        strings.ReplaceAll(moth.ID, "/", "_") + ext,
+				ContentType: contentType,
+				Reader:      imageResp.Body,
+			},
+		},
+	}).Send().Error
+}

@@ -10,6 +10,8 @@ import (
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/kabili207/asamigo/internal/commands"
+	"github.com/zekrotja/ken"
 	"mvdan.cc/xurls/v2"
 )
 
@@ -77,6 +79,14 @@ func main() {
 
 	// Register the messageCreate func as a callback for MessageCreate events.
 	dg.AddHandler(messageCreate)
+
+	k, err := ken.New(dg)
+
+	k.RegisterCommands(
+		new(commands.Moths),
+	)
+
+	defer k.Unregister()
 
 	// In this example, we only care about receiving message events.
 	dg.Identify.Intents = discordgo.IntentsGuildMessages
