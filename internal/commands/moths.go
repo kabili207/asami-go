@@ -64,7 +64,7 @@ func (c *Moths) Run(ctx ken.Context) (err error) {
 		key := cmd.StringValue()
 		moth = insects.GetInsect(insects.Moth, key)
 		if moth == nil {
-			return fmt.Errorf("unable to find moth %v", key)
+			return ctx.FollowUpError(fmt.Sprintf("Unable to find moth with the ID %v", key), "Cannot find moth").Send().Error
 		}
 	} else {
 		moth = insects.GetRandomInsect(insects.Moth)
@@ -72,13 +72,13 @@ func (c *Moths) Run(ctx ken.Context) (err error) {
 
 	imageResp, err := http.Get(moth.Pictures[0].Url)
 	if err != nil {
-		return err
+		return ctx.FollowUpError(fmt.Sprintf("Unhandled error:\r\n%v", err.Error()), "Error fetching image").Send().Error
 	}
 
 	contentType := imageResp.Header["Content-Type"][0]
 	ext, ok := mimeMaps[contentType]
 	if !ok {
-		return fmt.Errorf("unknown mime-type %v", contentType)
+		return ctx.FollowUpError(fmt.Sprintf("Unknown mime-type %v", contentType), "Error uploading image").Send().Error
 	}
 
 	return ctx.FollowUp(true, &discordgo.WebhookParams{
