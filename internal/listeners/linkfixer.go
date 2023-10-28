@@ -1,25 +1,12 @@
-package main
+package listeners
 
 import (
-	"flag"
 	"fmt"
-	"os"
-	"os/signal"
 	"regexp"
 	"strings"
-	"syscall"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/kabili207/asamigo/internal/commands"
-	"github.com/zekrotja/ken"
 	"mvdan.cc/xurls/v2"
-)
-
-// Variables used for command line parameters
-var (
-	Token          string
-	BotPermissions string = "274878262336"
-	Matchers       []*Matcher
 )
 
 type Matcher struct {
@@ -29,13 +16,13 @@ type Matcher struct {
 	Regex       *regexp.Regexp
 }
 
-func init() {
+type LinkFixer struct {
+	Matchers []*Matcher
+}
 
-	flag.StringVar(&Token, "t", "", "Bot Token")
-	flag.Parse()
-
+func NewLinkFixer() *LinkFixer {
 	// TODO: Consider moving to config file?
-	Matchers = []*Matcher{
+	matchers := []*Matcher{
 		{
 			Name:        "TikTok",
 			Pattern:     `^https?://(?:www\.)?tiktok.com/(.*)`,
@@ -62,56 +49,23 @@ func init() {
 			Replacement: "https://fxfuraffinity.net/$1",
 		},
 	}
-	for _, m := range Matchers {
+	for _, m := range matchers {
 		m.Regex = regexp.MustCompile(m.Pattern)
 	}
 
+	return &LinkFixer{
+		Matchers: matchers,
+	}
 }
 
-func main() {
+func (l *LinkFixer) RegisterHandlers(s *discordgo.Session) {
 
-	// Create a new Discord session using the provided bot token.
-	dg, err := discordgo.New("Bot " + Token)
-	if err != nil {
-		fmt.Println("error creating Discord session,", err)
-		return
-	}
-
-	// Register the messageCreate func as a callback for MessageCreate events.
-	dg.AddHandler(messageCreate)
-
-	k, err := ken.New(dg)
-
-	k.RegisterCommands(
-		new(commands.Moths),
-	)
-
-	defer k.Unregister()
-
-	// In this example, we only care about receiving message events.
-	dg.Identify.Intents = discordgo.IntentsGuildMessages
-
-	err = dg.Open()
-	if err != nil {
-		fmt.Println("error opening connection,", err)
-		return
-	}
-
-	// Wait here until CTRL-C or other term signal is received.
-	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
-	fmt.Printf("Invite link: https://discord.com/api/oauth2/authorize?client_id=768941376028016651&permissions=%v&scope=bot\n", BotPermissions)
-
-	sc := make(chan os.Signal, 1)
-	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
-	<-sc
-
-	// Cleanly close down the Discord session.
-	dg.Close()
+	s.AddHandler(l.messageCreate)
 }
 
 // This function will be called (due to AddHandler above) every time a new
 // message is created on any channel that the authenticated bot has access to.
-func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
+func (l *LinkFixer) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	// Ignore all messages created by the bot itself
 	if m.Author.ID == s.State.User.ID {
@@ -125,7 +79,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	origUrls := rx.FindAllString(m.Content, -1)
 
 	for _, u := range origUrls {
-		for _, m := range Matchers {
+		for _, m := range l.Matchers {
 			if m.Regex.MatchString(u) {
 				urls = append(urls, m.Regex.ReplaceAllString(u, m.Replacement))
 			}

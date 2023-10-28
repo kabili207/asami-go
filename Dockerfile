@@ -17,7 +17,7 @@ RUN go mod download
 COPY . .
 
 # Build the application
-RUN go build -tags timetzdata -o main ./
+RUN go build -tags timetzdata -o main ./cmd/discordbot
 
 # Move to /dist directory as the place for resulting binary folder
 WORKDIR /dist
