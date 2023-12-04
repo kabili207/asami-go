@@ -62,12 +62,15 @@ func (c *Moths) Run(ctx ken.Context) (err error) {
 	cmd, ok := ctx.Options().GetByNameOptional("key")
 	if ok {
 		key := cmd.StringValue()
-		moth = insects.GetInsect(insects.Moth, key)
-		if moth == nil {
+		moth, err = insects.GetInsect(insects.Moth, key)
+		if err != nil {
 			return ctx.FollowUpError(fmt.Sprintf("Unable to find moth with the ID %v", key), "Cannot find moth").Send().Error
 		}
 	} else {
-		moth = insects.GetRandomInsect(insects.Moth)
+		moth, err = insects.GetRandomInsect(insects.Moth)
+		if err != nil {
+			return ctx.FollowUpError("Unable to find a moth", "Cannot find moth").Send().Error
+		}
 	}
 
 	imageResp, err := http.Get(moth.Pictures[0].Url)

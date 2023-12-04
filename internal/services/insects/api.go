@@ -2,7 +2,6 @@ package insects
 
 import (
 	"fmt"
-	"log"
 	"math/rand"
 	"net/http"
 	"reflect"
@@ -34,13 +33,16 @@ var mappedFields = map[string]string{
 	"distribution":                       "Distribution",
 }
 
-func GetRandomInsect(insectType InsectType) *Insect {
-	insects := GetInsectList(insectType)
+func GetRandomInsect(insectType InsectType) (*Insect, error) {
+	insects, err := GetInsectList(insectType)
+	if err != nil {
+		return nil, err
+	}
 	rand.Seed(time.Now().Unix())
 	return GetInsect(insectType, insects[rand.Intn(len(insects))].Key)
 }
 
-func GetInsectList(insectType InsectType) []InsectSummary {
+func GetInsectList(insectType InsectType) ([]InsectSummary, error) {
 	var baseUrl string
 
 	if insectType == Moth {
@@ -49,9 +51,9 @@ func GetInsectList(insectType InsectType) []InsectSummary {
 		baseUrl = butterflyBaseUrl
 	}
 
-	doc := getPage(baseUrl + "a-to-z")
-	if doc == nil {
-		return nil
+	doc, err := getPage(baseUrl + "a-to-z")
+	if err != nil {
+		return nil, err
 	}
 	mothNodes := doc.Find(".atoz li span.field-content a")
 	insects := make([]InsectSummary, len(mothNodes.Nodes))
@@ -63,10 +65,10 @@ func GetInsectList(insectType InsectType) []InsectSummary {
 			Key:  strings.TrimPrefix(link, "/"+mothBaseUrl),
 		}
 	})
-	return insects
+	return insects, err
 }
 
-func GetInsect(insectType InsectType, key string) *Insect {
+func GetInsect(insectType InsectType, key string) (*Insect, error) {
 
 	var baseUrl string
 
@@ -75,10 +77,10 @@ func GetInsect(insectType InsectType, key string) *Insect {
 	} else {
 		baseUrl = butterflyBaseUrl
 	}
-	doc := getPage(baseUrl + key)
+	doc, err := getPage(baseUrl + key)
 
-	if doc == nil {
-		return nil
+	if err != nil {
+		return nil, err
 	}
 
 	insect := Insect{
@@ -100,7 +102,7 @@ func GetInsect(insectType InsectType, key string) *Insect {
 	})
 
 	insect.Pictures = pictures
-	return &insect
+	return &insect, nil
 }
 
 func parseDataList(sel *goquery.Selection, insect *Insect) {
@@ -233,21 +235,17 @@ func processList(rawString string) []string {
 	return data
 }
 
-func getPage(url string) *goquery.Document {
+func getPage(url string) (*goquery.Document, error) {
 	// Request the HTML page.
 	res, err := http.Get(apiBaseUrl + url)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
-		return nil //log.Fatalf("status code error: %d %s", res.StatusCode, res.Status)
+		return nil, err
 	}
 
 	// Load the HTML document
-	doc, err := goquery.NewDocumentFromReader(res.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return doc
+	return goquery.NewDocumentFromReader(res.Body)
 }
